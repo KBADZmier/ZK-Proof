@@ -1,18 +1,76 @@
-import React, { useState } from 'react';
-import { Shield, UserCheck, Database, Lock, RefreshCw, CheckCircle, Info, AlertCircle } from 'lucide-react';
-import WalletConnect from './WalletConnect'; // Importujemy logikę portfela
+import React, { useState, useEffect } from 'react';
+import { Shield, UserCheck, Database, Lock, RefreshCw, CheckCircle, AlertCircle } from 'lucide-react';
+import WalletConnect from './WalletConnect';
 import './App.css';
 
-function App() {
-  const [status, setStatus] = useState('Idle'); // Idle, Proving, Success
-  const [userAccount, setUserAccount] = useState(null); // Tu trzymamy prawdziwy adres z MetaMask
+// INTEGRACJA ZK (Noir & Barretenberg)
+import { Noir } from '@noir-lang/noir_js';
+import { BarretenbergBackend } from '@noir-lang/backend_barretenberg';
+import circuit from './circuit.json'; // Skompilowany obwód z folderu src
+import { ethers } from 'ethers';
 
-  // Symulacja procesu ZK
-  const mockProof = () => {
-    if (!userAccount) return;
-    setStatus('Proving');
-    setTimeout(() => setStatus('Success'), 3000);
-    setTimeout(() => setStatus('Idle'), 6000);
+
+const VERIFIER_ADDRESS = import.meta.env.VITE_VERIFIER_ADDRESS;
+const TARGET_HASH = import.meta.env.VITE_TARGET_HASH;
+const VERIFIER_ABI = [
+  "function verify(bytes calldata _proof, bytes32[] calldata _publicInputs) external view returns (bool)"
+];
+
+function App() {
+  const [status, setStatus] = useState('Idle'); 
+  const [userAccount, setUserAccount] = useState(null);
+  const [isVerified, setIsVerified] = useState(false);
+const [secretInput, setSecretInput] = useState("");
+  //logika zk
+  const handleGenerateAndVerify = async () => {
+    console.log(VERIFIER_ADDRESS);
+    if (!userAccount) return alert("Podłącz portfel MetaMask!");
+    if (!VERIFIER_ADDRESS) return alert("Błąd: Brak adresu kontraktu w pliku .env");
+ if (!secretInput) return alert("Wpisz swój Klucz Tożsamości!");
+    try {
+      setStatus('Proving');
+      console.log("Inicjalizacja silnika Noir JS...");
+
+    //inicjalizacja Barretenberg
+      const backend = new BarretenbergBackend(circuit);
+      const noir = new Noir(circuit, backend);
+
+      
+      const inputs = {
+      secret_id: secretInput, 
+      user_address: userAccount, //Publiczny adres portfela
+      public_hash: TARGET_HASH 
+    };
+
+      console.log("Generowanie dowodu ZK (UltraPlonk)...");
+      const { proof, publicInputs } = await noir.generateProof(inputs);
+      console.log("Dowód wygenerowany lokalnie w przeglądarce!");
+
+  
+      console.log("Łączenie ze smart kontraktem na Scroll...");
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();
+      const verifierContract = new ethers.Contract(VERIFIER_ADDRESS, VERIFIER_ABI, signer);
+
+      
+      //wywołanie funkcji werifikującej na blockchainnie
+      const isValid = await verifierContract.verify(proof, publicInputs);
+
+      if (isValid) {
+        setStatus('Success');
+        setIsVerified(true);
+        console.log("Sukces! Blockchain Scroll potwierdził poprawność dowodu.");
+        setSecretInput(""); // czyscimy
+      } else {
+        throw new Error("Kontrakt odrzucił dowód ZK.");
+      }
+
+    } catch (err) {
+      console.error("Błąd procesu ZK:", err);
+      setStatus('Error');
+      alert("Błąd: " + (err.reason || err.message || "Nieznany błąd"));
+      setTimeout(() => setStatus('Idle'), 3000);
+    }
   };
 
   return (
@@ -20,73 +78,73 @@ function App() {
       <header className="app-header">
         <div className="logo-area">
           <h1>ZK-Finance <span>Shield</span></h1>
-          <p>Scroll Testnet Environment</p>
+          <p>Scroll Sepolia Testnet | Noir ZKP</p>
         </div>
         
-        {/* Komponent portfela przekazuje adres do stanu userAccount */}
+        {/* Komponent portfela */}
         <WalletConnect onAccountChange={(addr) => setUserAccount(addr)} />
       </header>
 
       <main className="main-grid">
         
-        {/* Moduł 1: KYC */}
+      
         <section className={`zk-card ${!userAccount ? 'disabled-card' : ''}`}>
           <div className="card-title">
-            <UserCheck size={24} color={userAccount ? "#3b82f6" : "#4b5563"} />
+            <UserCheck size={24} color={isVerified ? "#10b981" : "#3b82f6"} />
             <h2>Private Identity (KYC)</h2>
           </div>
           <p className="description">
-            {userAccount 
-              ? "Udowodnij, że masz ukończone 18 lat bez ujawniania daty urodzenia (Noir Range Proof)."
-              : "Podłącz portfel MetaMask, aby zweryfikować swoją tożsamość kryptograficznie."}
+            {isVerified 
+              ? "Tożsamość zweryfikowana kryptograficznie on-chain." 
+              : "Udowodnij znajomość sekretu powiązanego z Twoim kontem bez jego ujawniania."}
           </p>
           
           <div className="input-wrapper">
-            <label className="label">Prywatna Data Urodzenia (Witness)</label>
-            <input type="date" disabled={!userAccount} />
+            <label className="label">Twój Prywatny Sekret (Znasz go tylko Ty)</label>
+            <input 
+              type="password" 
+              placeholder="Wpisz sekret" 
+              disabled={!userAccount || isVerified} 
+              value={secretInput}
+              onChange={(e) => setSecretInput(e.target.value)} // Aktualizacja stanu
+              className="input-field"
+            />
           </div>
           
           <button 
-            className="btn btn-blue" 
-            onClick={mockProof}
-            disabled={!userAccount || status === 'Proving'}
+            className={`btn ${isVerified ? 'btn-outline' : 'btn-blue'}`}
+            onClick={handleGenerateAndVerify}
+            disabled={!userAccount || status === 'Proving' || isVerified}
           >
-            {status === 'Proving' ? <RefreshCw className="spinner" size={18} /> : <Lock size={18} />}
-            {status === 'Proving' ? "Generowanie..." : "Generuj Dowód Noir"}
+            {status === 'Proving' ? <RefreshCw className="spinner" size={18} /> : isVerified ? <CheckCircle size={18} /> : <Lock size={18} />}
+            {status === 'Proving' ? "Obliczanie..." : isVerified ? "Zweryfikowano" : "Generuj Dowód Noir"}
           </button>
         </section>
 
-        {/* Moduł 2: Shielded Transfer */}
+      
         <section className={`zk-card ${!userAccount ? 'disabled-card' : ''}`}>
           <div className="card-title">
-            <Shield size={24} color={userAccount ? "#8b5cf6" : "#4b5563"} />
+            <Shield size={24} color="#8b5cf6" />
             <h2>Shielded Transfer</h2>
           </div>
           <p className="description">
-            Wyślij środki prywatnie na sieci Scroll. Dane transakcji zostaną ukryte w obwodzie ZK.
+            Prywatne przelewy ETH na Scroll. Kwota i odbiorca są ukryte w dowodzie ZK.
           </p>
-          
           <div className="input-wrapper">
-            <input placeholder="Adres odbiorcy (Zaszyfrowany)" disabled={!userAccount} />
+            <input placeholder="Adres odbiorcy" disabled={!userAccount} />
             <input type="number" placeholder="Kwota ETH" disabled={!userAccount} />
           </div>
-          
-          <button 
-            className="btn btn-purple" 
-            onClick={mockProof}
-            disabled={!userAccount || status === 'Proving'}
-          >
-            Wyślij Prywatnie na Scroll
+          <button className="btn btn-purple" disabled={true}>
+            Funkcja w trakcie implementacji
           </button>
         </section>
 
-        {/* Moduł 3: Proof of Reserves */}
+       
         <section className={`zk-card full-row ${!userAccount ? 'disabled-card' : ''}`}>
           <div className="card-title">
-            <Database size={24} color={userAccount ? "#10b981" : "#4b5563"} />
+            <Database size={24} color="#10b981" />
             <h2>Protocol Solvency (Proof of Reserves)</h2>
           </div>
-          
           <div className="reserves-stats">
             <div className="stat-item">
               <div className="stat-label">Total Assets (ZK-Proven)</div>
@@ -98,44 +156,32 @@ function App() {
             </div>
             <div className="stat-item solvency">
               <div className="stat-label">Solvency Ratio</div>
-              <div className="stat-value" style={{color: userAccount ? '#10b981' : '#4b5563'}}>101.2%</div>
+              <div className="stat-value" style={{color: '#10b981'}}>101.2%</div>
             </div>
           </div>
-          
           <div style={{display: 'flex', gap: '15px'}}>
             <input placeholder="Weryfikuj mój depozyt (Leaf Index)" disabled={!userAccount} />
-            <button 
-              className="btn btn-outline" 
-              style={{width: '250px'}} 
-              disabled={!userAccount}
-              onClick={mockProof}
-            >
-              Weryfikuj Wypłacalność
-            </button>
+            <button className="btn btn-outline" style={{width: '250px'}} disabled={!userAccount}>Weryfikuj</button>
           </div>
         </section>
       </main>
 
-      {/* Powiadomienie o procesie ZK */}
+      
       {status !== 'Idle' && (
         <div className="zk-status">
-          {status === 'Proving' ? (
-            <>
-              <RefreshCw size={20} className="spinner" />
-              <span>Obliczanie dowodu ZK po stronie klienta...</span>
-            </>
-          ) : (
-            <>
-              <CheckCircle size={20} color="#fff" />
-              <span>Dowód zweryfikowany pomyślnie na Scroll!</span>
-            </>
+          {status === 'Proving' && (
+            <><RefreshCw size={20} className="spinner" /><span>Generowanie dowodu UltraPlonk...</span></>
+          )}
+          {status === 'Success' && (
+            <><CheckCircle size={20} color="#fff" /><span>Zweryfikowano pomyślnie na Scroll!</span></>
           )}
         </div>
       )}
 
       {!userAccount && (
-        <div style={{textAlign: 'center', marginTop: '20px', color: '#94a3b8', fontSize: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px'}}>
-          <AlertCircle size={16} /> Wymagane połączenie z portfelem do wykonania operacji ZK.
+        <div className="footer-info" style={{textAlign: 'center', marginTop: '20px', color: '#94a3b8'}}>
+          <AlertCircle size={16} style={{verticalAlign: 'middle', marginRight: '5px'}} />
+          Połącz portfel MetaMask, aby odblokować funkcje prywatności.
         </div>
       )}
     </div>
