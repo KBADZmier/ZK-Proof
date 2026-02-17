@@ -3,6 +3,7 @@ import WalletConnect from './WalletConnect';
 import KYCCard from './components/KYCCard';
 import { AlertCircle } from 'lucide-react'; // Dodany brakujący import
 import './App.css';
+import TransferCard from './components/TransferCard';
 
 function App() {
   const [userAccount, setUserAccount] = useState(null);
@@ -24,7 +25,7 @@ function App() {
     
         <section className="zk-card disabled-card">
            <h2>Shielded Transfer</h2>
-           <p className="description">Oczekuje na implementację obwodu...</p>
+           <TransferCard userAccount={userAccount} />
         </section>
       </main>
         {!userAccount && (
