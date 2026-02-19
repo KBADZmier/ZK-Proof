@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Shield, Send, RefreshCw, CheckCircle, AlertCircle } from 'lucide-react';
 import { runZKProcess } from '../services/zkProvider';
-import circuit from '../circuit_transfer.json'; // Nowy plik JSON
+import circuit from '../circuit_transfer.json';
 
 const TransferCard = ({ userAccount }) => {
   const [status, setStatus] = useState('Idle');
@@ -12,15 +12,16 @@ const TransferCard = ({ userAccount }) => {
     if (!amount) return alert("Podaj kwotę przelewu!");
     if (parseFloat(amount) <= 0) return alert("Kwota musi być dodatnia!");
 
+    // Konwersja na tekstową liczbę całkowitą (Noir Fields)
+    const cleanAmount = Math.floor(Number(amount)).toString();
+    
     setStatus('Proving');
     try {
       const inputs = {
-        sender_balance: "1000", // PRYWATNE: Twoje ukryte środki
-         transfer_amount: parseInt(amount) // PUBLICZNE: To widzi system
+        sender_balance: "1000", // Twoje ukryte saldo (Private Witness)
+        transfer_amount: cleanAmount // Kwota (Public Input)
       };
 
-      console.log("Generowanie dowodu wypłacalności dla kwoty:", amount);
-      
       const { isValid } = await runZKProcess(
         circuit, 
         inputs, 
@@ -30,11 +31,10 @@ const TransferCard = ({ userAccount }) => {
       if (isValid) {
         setIsSent(true);
         setStatus('Success');
-        console.log("SUKCES: Blockchain Scroll zweryfikował wypłacalność!");
       }
     } catch (err) {
       console.error(err);
-      alert("Błąd: Prawdopodobnie kwota przelewu przekracza Twoje prywatne saldo (1000 ETH)!");
+      alert("Błąd weryfikacji ZK! Sprawdź czy kwota nie przekracza salda.");
       setStatus('Idle');
     }
   };
@@ -46,31 +46,32 @@ const TransferCard = ({ userAccount }) => {
         <h2>Shielded Transfer</h2>
       </div>
       <p className="description">
-        Udowodnij, że posiadasz wystarczające środki on-chain bez ujawniania swojego całkowitego salda.
+        Udowodnij wypłacalność bez ujawniania salda (Solvency Proof).
       </p>
       
       <div className="input-wrapper">
-        <label className="label">Kwota Przelewu (Widoczna)</label>
+        <label className="label">Kwota Przelewu</label>
         <input 
           type="number" 
           value={amount}
           onChange={(e) => setAmount(e.target.value)}
           disabled={!userAccount || isSent}
-          placeholder="np. 50"
+          placeholder="Wpisz kwotę"
           className="input-field"
         />
-        <div style={{fontSize: '11px', color: '#94a3b8', marginTop: '5px', display: 'flex', alignItems: 'center', gap: '5px'}}>
-            <AlertCircle size={12} /> Twoje prywatne saldo w systemie: 1000 ETH
+        <div className="privacy-info-box">
+           <AlertCircle size={12} /> 
+           <span>Prywatne saldo: <strong>1000 ETH</strong> (ukryte przed Scroll)</span>
         </div>
       </div>
 
       <button 
-        className={`btn ${isSent ? 'btn-outline' : 'btn-purple'}`}
+        className={`btn ${isSent ? 'btn-outline success-border' : 'btn-purple'}`}
         onClick={handleTransfer}
         disabled={!userAccount || status === 'Proving' || isSent}
       >
         {status === 'Proving' ? <RefreshCw className="spinner" size={18} /> : isSent ? <CheckCircle size={18} /> : <Send size={18} />}
-        {status === 'Proving' ? "Obliczanie ZK-Proof..." : isSent ? "Pomyślnie Zweryfikowano" : "Wyślij z Dowodem Wypłacalności"}
+        {status === 'Proving' ? "Dowodzenie..." : isSent ? "Zweryfikowano" : "Wyślij z ZK-Proof"}
       </button>
     </section>
   );
