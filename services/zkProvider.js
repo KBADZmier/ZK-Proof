@@ -2,45 +2,52 @@ import { Noir } from '@noir-lang/noir_js';
 import { BarretenbergBackend } from '@noir-lang/backend_barretenberg';
 import { ethers } from 'ethers';
 
-export const runZKProcess = async (circuitData, inputs, verifierAddress) => {
+export const runZKProcess = async (circuitData, inputs, managerAddress) => {
   try {
-    console.log("Inicjalizacja backendu dla:", verifierAddress);
+    console.log("Inicjalizacja backendu dla Zarządcy:", managerAddress);
 
-    const backend = new BarretenbergBackend(circuitData);
-
-
+    // 1. Generowanie dowodu lokalnie
+    const backend = new BarretenbergBackend(circuitData, { threads: 1 });
     const noir = new Noir(circuitData, backend);
 
-    console.log("Generowanie Witness dla danych:", inputs);
+    console.log("Generowanie Witness i Proof...");
     const { witness } = await noir.execute(inputs);
-    
-    console.log("Generowanie Proof (UltraPlonk)...");
     const proofData = await backend.generateProof(witness);
 
+    // 2. Połączenie z portfelem i kontraktem Zarządcy
     const provider = new ethers.BrowserProvider(window.ethereum);
     const signer = await provider.getSigner();
     
-    const verifierABI = [
-      "function verify(bytes calldata _proof, bytes32[] calldata _publicInputs) external view returns (bool)"
+    // ABI musi pasować do Twojego pliku ZKManager.sol z Remixa!
+    const managerABI = [
+      "function submitProof(bytes calldata _proof, bytes32[] calldata _publicInputs) external"
     ];
     
-    const verifierContract = new ethers.Contract(verifierAddress, verifierABI, signer);
+    const managerContract = new ethers.Contract(managerAddress, managerABI, signer);
 
-    // Formatowanie wejść publicznych do standardu bytes32 dla Solidity
+    // 3. Przygotowanie wejść (Padding do 32 bajtów - standard EVM)
     const formattedPublicInputs = proofData.publicInputs.map(input =>
       ethers.zeroPadValue(input, 32)
     );
 
-    console.log("Weryfikacja on-chain na Scroll...");
-    const isValid = await verifierContract.verify(
+    console.log("Wysyłanie transakcji submitProof na Scroll...");
+
+    // 4. WYWOŁANIE TRANSAKCJI (Tu MetaMask poprosi o podpis)
+    const tx = await managerContract.submitProof(
       proofData.proof,
-      formattedPublicInputs
+      formattedPublicInputs,
+      { gasLimit: 1000000 } // Ręczny limit, aby uniknąć błędów estymacji na Scroll
     );
 
-    return { isValid, proofData };
+    console.log("Transakcja wysłana! Hash:", tx.hash);
+    const receipt = await tx.wait();
+    console.log("Potwierdzono w bloku:", receipt.blockNumber);
+
+    return { isValid: true, txHash: tx.hash };
+
   } catch (error) {
-    console.error("=== ZK ERROR DETAILS ===");
-    console.error("Wiadomość:", error?.message);
+    console.error("=== BŁĄD TRANSAKCJI ZK ===");
+    console.error(error?.message);
     throw error;
   }
 };

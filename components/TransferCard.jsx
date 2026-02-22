@@ -25,7 +25,7 @@ const TransferCard = ({ userAccount }) => {
       const { isValid } = await runZKProcess(
         circuit, 
         inputs, 
-        import.meta.env.VITE_TRANSFER_VERIFIER_ADDRESS
+        import.meta.env.VITE_MANAGER_ADDRESS
       );
 
       if (isValid) {
