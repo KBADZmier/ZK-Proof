@@ -12,7 +12,7 @@ const TransferCard = ({ userAccount }) => {
     if (!amount) return alert("Podaj kwotę przelewu!");
     if (parseFloat(amount) <= 0) return alert("Kwota musi być dodatnia!");
 
-    // Konwersja na tekstową liczbę całkowitą (Noir Fields)
+  
     const cleanAmount = Math.floor(Number(amount)).toString();
     
     setStatus('Proving');

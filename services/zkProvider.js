@@ -6,7 +6,7 @@ export const runZKProcess = async (circuitData, inputs, managerAddress) => {
   try {
     console.log("Inicjalizacja backendu dla Zarządcy:", managerAddress);
 
-    // 1. Generowanie dowodu lokalnie
+ 
     const backend = new BarretenbergBackend(circuitData, { threads: 1 });
     const noir = new Noir(circuitData, backend);
 
@@ -14,11 +14,11 @@ export const runZKProcess = async (circuitData, inputs, managerAddress) => {
     const { witness } = await noir.execute(inputs);
     const proofData = await backend.generateProof(witness);
 
-    // 2. Połączenie z portfelem i kontraktem Zarządcy
+
     const provider = new ethers.BrowserProvider(window.ethereum);
     const signer = await provider.getSigner();
     
-    // ABI musi pasować do Twojego pliku ZKManager.sol z Remixa!
+
     const managerABI = [
       "function submitProof(bytes calldata _proof, bytes32[] calldata _publicInputs) external"
     ];
@@ -32,11 +32,11 @@ export const runZKProcess = async (circuitData, inputs, managerAddress) => {
 
     console.log("Wysyłanie transakcji submitProof na Scroll...");
 
-    // 4. WYWOŁANIE TRANSAKCJI (Tu MetaMask poprosi o podpis)
+    
     const tx = await managerContract.submitProof(
       proofData.proof,
       formattedPublicInputs,
-      { gasLimit: 1000000 } // Ręczny limit, aby uniknąć błędów estymacji na Scroll
+      { gasLimit: 1000000 } //reczny limit
     );
 
     console.log("Transakcja wysłana! Hash:", tx.hash);
