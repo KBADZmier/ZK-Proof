@@ -4,7 +4,7 @@ import KYCCard from './components/KYCCard';
 import { AlertCircle } from 'lucide-react'; // Dodany brakujący import
 import './App.css';
 import TransferCard from './components/TransferCard';
-
+import ReservesCard from './components/ReservesCard';
 function App() {
   const [userAccount, setUserAccount] = useState(null);
 
@@ -18,15 +18,15 @@ function App() {
         <WalletConnect onAccountChange={(addr) => setUserAccount(addr)} />
       </header>
 
-      <main className="main-grid">
+       <main className="main-grid">
         
         <KYCCard userAccount={userAccount} />
 
-    
-        <section className="zk-card disabled-card">
-           <h2>Shielded Transfer</h2>
-           <TransferCard userAccount={userAccount} />
-        </section>
+       
+        <TransferCard userAccount={userAccount} />
+
+       
+        <ReservesCard userAccount={userAccount} />
       </main>
         {!userAccount && (
           <div className="footer-info" style={{ textAlign: 'center', marginTop: '40px', color: '#94a3b8' }}>
