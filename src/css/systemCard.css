@@ -1,0 +1,112 @@
+.main-flow-container {
+  display: grid;
+  grid-template-columns: 1.05fr 0.95fr;
+  gap: 32px;
+}
+
+.input-section {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.input-group-spaced {
+  margin-bottom: 10px;
+}
+
+.success-text-small {
+  font-size: 11px;
+  color: #10b981;
+  margin-top: 6px;
+}
+
+/* Status */
+.status-section {
+  background: radial-gradient(circle at top, #0f172a, #0b0e14);
+  border-radius: 14px;
+  padding: 22px;
+  border: 1px solid #1f2937;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.status-section::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 50% 0%, rgba(99,102,241,0.12), transparent 70%);
+  pointer-events: none;
+}
+
+.status-idle-text {
+  color: #94a3b8;
+  font-size: 14px;
+  text-align: center;
+}
+
+/* Loader */
+.proving-loader {
+  text-align: center;
+}
+
+.spinner {
+  animation: spin 1s linear infinite;
+}
+
+.spinner-spaced {
+  margin-bottom: 10px;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Success */
+.success-results {
+  background: rgba(16, 185, 129, 0.05);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+  border-radius: 12px;
+  padding: 14px;
+}
+
+.success-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #10b981;
+  margin-bottom: 12px;
+}
+
+.stat-line {
+  font-size: 13px;
+  margin-bottom: 8px;
+}
+
+.icon-inline {
+  margin-right: 5px;
+  vertical-align: middle;
+}
+
+.btn-small {
+  font-size: 12px;
+  padding: 8px 12px;
+}
+
+/* Button spacing */
+.execute-btn {
+  margin-top: 25px;
+  gap: 8px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .main-flow-container {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+}
