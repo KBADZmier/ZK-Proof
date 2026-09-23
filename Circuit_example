@@ -1,0 +1,25 @@
+
+use dep::std;
+
+fn main(
+    birth_date: u32,              
+    merkle_proof: [Field; 17],  
+    index: Field,               
+
+    user_address: pub Field,    
+    merkle_root: pub Field,     
+    current_date: pub u32, 
+    transfer_amount: pub u64,   
+    aml_limit: pub u64          
+) {
+    
+    assert(current_date - birth_date >= 180000);
+
+
+    let leaf = std::hash::pedersen_hash([user_address, birth_date as Field]);
+    
+    let computed_root = std::merkle::compute_merkle_root(leaf, index, merkle_proof);
+    assert(computed_root == merkle_root);
+
+    assert(transfer_amount <= aml_limit);
+}
