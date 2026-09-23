@@ -1,18 +1,18 @@
-# React + Vite
+# ZK-Proof Application
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+An application utilizing Zero-Knowledge Proofs (ZKP) for generating and verifying proofs. The project consists of a frontend interface, proof generation scripts, and smart contracts.
 
-Currently, two official plugins are available:
+Getting Started
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+To run the application correctly, follow the steps below in the specified order.
 
-## React Compiler
+### Step 1: Prepare the Folder Structure
+Create a `circuits` folder in the root directory of the project. This folder will store the circuit source files (`.circuit` files) and the generated intermediate files.
+*(Note: This folder is ignored by Git, so you must create it manually).*
 
-The React Compiler is enabled on this template. See [this documentation](https://react.dev/learn/react-compiler) for more information.
-
-Note: This will impact Vite dev & build performances.
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+Step 2: Run the Issuer
+The Issuer is responsible for preparing the initial data and configuring the system. 
+Step 3: Compile the Circuits
+To generate the files needed to create proofs, you must compile the circuits. You can use a script modeled after circuitTest.
+Step 4: Deploy Contracts (Remix IDE)
+A verifier contract is required to verify proofs on the blockchain.
